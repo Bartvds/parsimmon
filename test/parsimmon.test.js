@@ -1,4 +1,5 @@
 suite('parser', function() {
+  "use strict";
   var string = Parsimmon.string;
   var regex = Parsimmon.regex;
   var letter = Parsimmon.letter;
@@ -10,11 +11,42 @@ suite('parser', function() {
   var all = Parsimmon.all;
   var index = Parsimmon.index;
 
+  function asserThrows(call, fields, msg) {
+    var pass = false;
+    try {
+      call();
+      pass = true;
+    }
+    catch (error) {
+      assert.instanceOf(error, Error);
+      assert.equal(error.name, 'ParseError', error.toString());
+      var values = Object.create(null);
+      Object.keys(fields).forEach(function(key) {
+        values[key] = error[key];
+      });
+      assert.deepEqual(values, fields);
+    }
+    assert(pass, 'expected to fail' + (msg ? ': ' + msg : msg));
+  }
+
+  suite('Parse Error', function() {
+    test('first character', function() {
+      var parser = string('x');
+      asserThrows(function() { parser.parse('abcdef') }, {
+        message: "expected 'x' at character 0, got 'abcdef'\n    parsing: 'abcdef'",
+        index: 0,
+        stream: 'abcdef',
+        expected: 'x',
+        position: { row: 0, col: 0}
+      });
+    });
+  });
+
   test('Parsimmon.string', function() {
     var parser = string('x');
     assert.equal(parser.parse('x'), 'x');
     assert.throws(function() { parser.parse('y') },
-      "Parse Error: expected 'x' at character 0, got 'y'\n    parsing: 'y'");
+      "expected 'x' at character 0, got 'y'\n    parsing: 'y'");
   });
 
   test('Parsimmon.regex', function() {
@@ -23,9 +55,26 @@ suite('parser', function() {
     assert.equal(parser.parse('1'), '1');
     assert.equal(parser.parse('4'), '4');
     assert.throws(function() { parser.parse('x'); },
-      "Parse Error: expected /[0-9]/ at character 0, got 'x'\n    parsing: 'x'");
+      "expected /[0-9]/ at character 0, got 'x'\n    parsing: 'x'");
     assert.throws(function() { parser.parse('x0'); },
-      "Parse Error: expected /[0-9]/ at character 0, got 'x0'\n    parsing: 'x0'");
+      "expected /[0-9]/ at character 0, got 'x0'\n    parsing: 'x0'");
+  });
+
+  test('Parsimmon.regex group', function() {
+    var parser = regex(/v([0-9])/, 1);
+
+    assert.equal(parser.parse('v1'), '1');
+    assert.equal(parser.parse('v4'), '4');
+    assert.throws(function() { parser.parse('x'); },
+      "expected /v([0-9])/ at character 0, got 'x'\n    parsing: 'x'");
+    assert.throws(function() { parser.parse('x0'); },
+      "expected /v([0-9])/ at character 0, got 'x0'\n    parsing: 'x0'");
+  });
+
+  test('Parsimmon.regex invalid group', function() {
+    var parser = regex(/v([0-9])/, 2);
+    assert.throws(function() { parser.parse('v1'); },
+      "expected /v([0-9])/ at character 0, got 'v1'\n    parsing: 'v1'");
   });
 
   suite('then', function() {
@@ -33,9 +82,9 @@ suite('parser', function() {
       var parser = string('x').then(string('y'));
       assert.equal(parser.parse('xy'), 'y');
       assert.throws(function() { parser.parse('y'); },
-        "Parse Error: expected 'x' at character 0, got 'y'\n    parsing: 'y'");
+        "expected 'x' at character 0, got 'y'\n    parsing: 'y'");
       assert.throws(function() { parser.parse('xz'); },
-        "Parse Error: expected 'y' at character 1, got '...z'\n    parsing: 'xz'");
+        "expected 'y' at character 1, got '...z'\n    parsing: 'xz'");
     });
 
     test('asserts that a parser is returned', function() {
@@ -184,7 +233,6 @@ suite('parser', function() {
 
     test('atMost', function() {
       var atMostTwo = letter.atMost(2);
-      debugger
       assertEqualArray(atMostTwo.parse(''), []);
       assertEqualArray(atMostTwo.parse('a'), ['a']);
       assertEqualArray(atMostTwo.parse('ab'), ['a', 'b']);
@@ -210,7 +258,7 @@ suite('parser', function() {
       }).or(string('x'));
 
       assert.throws(function() { parser.parse('y'); },
-        "Parse Error: expected a character besides y, got the end of the string\n    parsing: 'y'");
+        "expected a character besides y, got the end of the string\n    parsing: 'y'");
       assert.equal(parser.parse('x'), 'x');
     });
 
@@ -230,12 +278,12 @@ suite('parser', function() {
       allowedOperator = '+';
       assert.equal(parser.parse('x+y'), '+');
       assert.throws(function() { parser.parse('x*y'); },
-        "Parse Error: expected + at character 2, got '...y'\n    parsing: 'x*y'");
+        "expected + at character 2, got '...y'\n    parsing: 'x*y'");
 
       allowedOperator = '*';
       assert.equal(parser.parse('x*y'), '*');
       assert.throws(function() { parser.parse('x+y'); },
-        "Parse Error: expected * at character 2, got '...y'\n    parsing: 'x+y'");
+        "expected * at character 2, got '...y'\n    parsing: 'x+y'");
     });
   });
 
@@ -269,14 +317,14 @@ suite('parser', function() {
         var parser = string('abc').then(string('def')).or(string('ab').then(string('cd')));
 
         assert.throws(function() { parser.parse('abc'); },
-          "Parse Error: expected 'def', got the end of the string\n    parsing: 'abc'");
+          "expected 'def', got the end of the string\n    parsing: 'abc'");
       });
 
       test('prefer last of equal length branches', function() {
         var parser = string('abc').then(string('def')).or(string('abc').then(string('d')));
 
         assert.throws(function() { parser.parse('abc'); },
-          "Parse Error: expected 'd', got the end of the string\n    parsing: 'abc'");
+          "expected 'd', got the end of the string\n    parsing: 'abc'");
       });
 
       test('prefer longest branch even after a success', function() {
@@ -284,7 +332,7 @@ suite('parser', function() {
           .then(string('cd')).then(string('xyz'));
 
         assert.throws(function() { parser.parse('abcdef'); },
-          "Parse Error: expected 'g', got the end of the string\n    parsing: 'abcdef'");
+          "expected 'g', got the end of the string\n    parsing: 'abcdef'");
       });
     });
 
@@ -297,10 +345,10 @@ suite('parser', function() {
         // assert.deepEqual(list.parse('(a b) (c ((() d)))'), [['a', 'b'], ['c', [[[], 'd']]]]);
 
         assert.throws(function() { list.parse('(a b ()) c)'); },
-          "Parse Error: expected EOF at character 10, got '...)'\n    parsing: '(a b ()) c)'");
+          "expected EOF at character 10, got '...)'\n    parsing: '(a b ()) c)'");
 
         assert.throws(function() { list.parse('(a (b)) (() c'); },
-          "Parse Error: expected ')', got the end of the string\n    parsing: '(a (b)) (() c'");
+          "expected ')', got the end of the string\n    parsing: '(a (b)) (() c'");
       });
 
       test('prefer longest branch in .or() nested in .many()', function() {
@@ -309,7 +357,7 @@ suite('parser', function() {
         assert.deepEqual(parser.parse('aaabcdefaa'), ['a', 'a', 'def', 'a', 'a']);
 
         assert.throws(function() { parser.parse('aaabcde'); },
-          "Parse Error: expected 'def' at character 5, got '...de'\n    parsing: 'aaabcde'");
+          "expected 'def' at character 5, got '...de'\n    parsing: 'aaabcde'");
       });
     });
 
@@ -318,10 +366,10 @@ suite('parser', function() {
         var parser = string('abc').then(string('def')).or(string('a')).times(3, 6);
 
         assert.throws(function() { parser.parse('aabcde'); },
-          "Parse Error: expected 'def' at character 4, got '...de'\n    parsing: 'aabcde'");
+          "expected 'def' at character 4, got '...de'\n    parsing: 'aabcde'");
 
         assert.throws(function() { parser.parse('aaaaabcde'); },
-            "Parse Error: expected 'def' at character 7, got '...de'\n    parsing: 'aaaaabcde'");
+          "expected 'def' at character 7, got '...de'\n    parsing: 'aaaaabcde'");
       });
     });
   });

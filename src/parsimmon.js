@@ -9,6 +9,22 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
   // construct your Parser from the base parsers and the
   // parser combinator methods.
 
+  var lineExp = /\r?\n/g;
+
+  function ParseError(message, stream, index, expected, frame) {
+    this.name = 'ParseError';
+    this.expected = expected;
+    this.message = message;
+    this.stream = stream;
+    this.index = index;
+    this.position = getPosition(this.stream, this.index);
+
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, frame) ;
+    }
+  }
+  ParseError.prototype = Object.create(Error.prototype);
+
   function makeSuccess(index, value) {
     return {
       status: true,
@@ -42,20 +58,41 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
     }
   }
 
-  function parseError(stream, result) {
+  function getPosition(stream, index) {
+    var position = {
+      col: 0,
+      row: 0
+    };
+    var match;
+    var lineStart = 0;
+    while (match = lineExp.exec(stream)) {
+      if (lineExp.lastIndex > index) {
+        position.col = index - lineStart;
+        return position;
+      }
+      position.row += 1;
+      lineStart = lineExp.lastIndex + match[0].length;
+    }
+    position.col = index - lineStart;
+    return position;
+  }
+
+  function showError(stream, result) {
     var expected = result.expected;
     var i = result.furthest;
-
+    var message;
     if (i === stream.length) {
-      var message = 'expected ' + expected + ', got the end of the string';
+      message = 'expected ' + expected + ', got the end of the string';
     }
     else {
       var prefix = (i > 0 ? "'..." : "'");
       var suffix = (stream.length - i > 12 ? "...'" : "'");
-      var message = 'expected ' + expected + ' at character ' + i + ', got '
-        + prefix + stream.slice(i, i+12) + suffix;
+      message = 'expected ' + expected + ' at character ' + i + ', got '
+        + prefix + stream.slice(i, i + 12) + suffix;
     }
-    throw 'Parse Error: ' + message + "\n    parsing: '" + stream + "'";
+
+    throw new ParseError(message + "\n    parsing: '" + stream + "'",
+      stream, result.furthest, result.expected, _.parse);
   }
 
   _.init = function(body) { this._ = body; };
@@ -63,7 +100,7 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
   _.parse = function(stream) {
     var result = this.skip(eof)._(stream, 0);
 
-    return result.status ? result.value : parseError(stream, result);
+    return result.status ? result.value : showError(stream, result);
   };
 
   // -*- primitive combinators -*- //
@@ -224,7 +261,7 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
     });
   };
 
-  var regex = Parsimmon.regex = function(re) {
+  var regex = Parsimmon.regex = function(re, group) {
     var anchored = RegExp('^(?:'+re.source+')', (''+re).slice((''+re).lastIndexOf('/')+1));
 
     return Parser(function(stream, i) {
@@ -232,6 +269,14 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
 
       if (match) {
         var result = match[0];
+        if (typeof group !== 'undefined') {
+          if (typeof match[group] !== 'undefined') {
+            return makeSuccess(i+result.length, match[group]);
+          }
+          else {
+            return makeFailure(i, re);
+          }
+        }
         return makeSuccess(i+result.length, result);
       }
       else {
