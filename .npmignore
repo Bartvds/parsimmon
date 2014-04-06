@@ -1,1 +1,14 @@
-# empty - here to override the automatic usage of .gitignore
+# here to override the automatic usage of .gitignore
+
+/.idea
+/node_modules
+/CHANGELOG.md
+/src
+/test
+/examples
+/build/parsimmon/browser*
+/build/parsimmon/*.js.map
+/Makefile
+/Gruntfile.js
+/*.tgz
+/.*

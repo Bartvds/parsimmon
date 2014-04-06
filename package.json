@@ -9,11 +9,6 @@
   ],
   "author": "Jay Adkisson <jjmadkisson at gmail dot com>",
   "repository": "git://github.com/jayferd/parsimmon",
-  "files": [
-    "index.js",
-    "package.json",
-    "build/parsimmon.commonjs.js"
-  ],
   "main": "index.js",
   "devDependencies": {
     "chai": "1.5.x",
