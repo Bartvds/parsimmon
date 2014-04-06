@@ -6,9 +6,9 @@
 /src
 /test
 /examples
-/build/parsimmon.browser*
-/build/*.js.map
+/build/parsimmon.browser.js
 /Makefile
 /Gruntfile.js
 /*.tgz
 /.*
+*.js.map

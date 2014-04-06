@@ -1,7 +1,11 @@
 /*.tgz
-/build
 
 npm-*.log
 /node_modules
 
 /tmp
+
+/build/parsimmon.browser.js
+/build/parsimmon.browser.js.map
+/build/parsimmon.browser.min.js
+/build/parsimmon.commonjs.js.map
