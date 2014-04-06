@@ -10,6 +10,7 @@ suite('parser', function() {
   var succeed = Parsimmon.succeed;
   var all = Parsimmon.all;
   var index = Parsimmon.index;
+  var seq = Parsimmon.seq;
 
   function asserThrows(call, fields, msg) {
     var pass = false;
@@ -26,18 +27,69 @@ suite('parser', function() {
       });
       assert.deepEqual(values, fields);
     }
-    assert(pass, 'expected to fail' + (msg ? ': ' + msg : msg));
+    assert(!pass, 'expected to fail ' + (msg ? ': ' + msg : ''));
   }
 
   suite('Parse Error', function() {
     test('first character', function() {
       var parser = string('x');
-      asserThrows(function() { parser.parse('abcdef') }, {
-        message: "expected 'x' at character 0, got 'abcdef'\n    parsing: 'abcdef'",
+      var stream = 'abc';
+      asserThrows(function() { parser.parse(stream) }, {
+        message: "expected 'x' at character 0, got 'abc'\n    parsing: '" + stream + "'",
         index: 0,
-        stream: 'abcdef',
         expected: 'x',
         position: { row: 0, col: 0}
+      });
+    });
+
+    test('single line', function() {
+      var parser = string('aabbcc');
+      var stream = 'aabbccdd';
+      asserThrows(function() { parser.parse(stream) }, {
+        message: "expected EOF at character 6, got '...dd'\n    parsing: '" + stream + "'",
+        index: 6,
+        expected: 'EOF',
+        position: { row: 0, col: 6}
+      });
+    });
+
+    test('multiline', function() {
+      var stream = 'aa\nbb\naaX\n';
+      var parser = seq(
+        string('aa\nbb\n'),
+        string('aa').then(string('bb'))
+      );
+      asserThrows(function() { parser.parse(stream) }, {
+        message: "expected 'bb' at character 8, got '...X\n'\n    parsing: '" + stream + "'",
+        index: 8,
+        expected: 'bb',
+        position: { row: 2, col: 2}
+      });
+    });
+
+    test('multiline mixed', function() {
+      var stream = 'aa\n\nbb\n\naaX\n';
+      var parser = seq(
+        string('aa\n\nbb\n\n'),
+        string('aa').then(string('bb'))
+      );
+      asserThrows(function() { parser.parse(stream) }, {
+        index: 10,
+        expected: 'bb',
+        position: { row: 4, col: 2}
+      });
+    });
+
+    test('multiline end', function() {
+      var stream = 'aa\n\nbb\n\naa';
+      var parser = seq(
+        string('aa\n\nbb\n\n'),
+        string('aa').then(string('bb'))
+      );
+      asserThrows(function() { parser.parse(stream) }, {
+        index: 10,
+        expected: 'bb',
+        position: { row: 4, col: 2}
       });
     });
   });

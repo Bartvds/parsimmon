@@ -65,13 +65,15 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
     };
     var match;
     var lineStart = 0;
+    lineExp.lastIndex = 0;
+
     while (match = lineExp.exec(stream)) {
       if (lineExp.lastIndex > index) {
         position.col = index - lineStart;
         return position;
       }
       position.row += 1;
-      lineStart = lineExp.lastIndex + match[0].length;
+      lineStart = lineExp.lastIndex;
     }
     position.col = index - lineStart;
     return position;
