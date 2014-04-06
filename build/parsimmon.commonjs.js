@@ -66,18 +66,22 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
       row: 0
     };
     var match;
-    var lineStart = 0;
+    var nextLineStart = 0;
     lineExp.lastIndex = 0;
 
     while (match = lineExp.exec(stream)) {
+      console.log('lastIndex: ' + lineExp.lastIndex);
+
       if (lineExp.lastIndex > index) {
-        position.col = index - lineStart;
+        position.col = index - nextLineStart;
         return position;
       }
       position.row += 1;
-      lineStart = lineExp.lastIndex;
+      nextLineStart = lineExp.lastIndex + match[0].length + 1;
+      console.log('nextLineStart: ' + nextLineStart);
     }
-    position.col = index - lineStart;
+    console.log('single or end line');
+    position.col = index - nextLineStart;
     return position;
   }
 
@@ -267,26 +271,36 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
 
   var regex = Parsimmon.regex = function(re, group) {
     var anchored = RegExp('^(?:'+re.source+')', (''+re).slice((''+re).lastIndexOf('/')+1));
-
-    return Parser(function(stream, i) {
-      var match = anchored.exec(stream.slice(i));
-
-      if (match) {
-        var result = match[0];
-        if (typeof group !== 'undefined') {
+    // get optimised
+    if (typeof group !== 'undefined') {
+      return Parser(function (stream, i) {
+        var match = anchored.exec(stream.slice(i));
+        if (match) {
+          var result = match[0];
           if (typeof match[group] !== 'undefined') {
-            return makeSuccess(i+result.length, match[group]);
+            return makeSuccess(i + result.length, match[group]);
           }
           else {
             return makeFailure(i, re);
           }
         }
-        return makeSuccess(i+result.length, result);
-      }
-      else {
-        return makeFailure(i, re);
-      }
-    });
+        else {
+          return makeFailure(i, re);
+        }
+      });
+    }
+    else {
+      return Parser(function (stream, i) {
+        var match = anchored.exec(stream.slice(i));
+        if (match) {
+          var result = match[0];
+          return makeSuccess(i+result.length, result);
+        }
+        else {
+          return makeFailure(i, re);
+        }
+      });
+    }
   };
 
   var succeed = Parsimmon.succeed = function(value) {
