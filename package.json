@@ -10,6 +10,9 @@
   "author": "Jay Adkisson <jjmadkisson at gmail dot com>",
   "repository": "git://github.com/jayferd/parsimmon",
   "main": "index.js",
+  "engines": {
+    "node": ">= 0.10.0"
+  },
   "devDependencies": {
     "chai": "1.5.x",
     "grunt-contrib-clean": "~0.5.0",
