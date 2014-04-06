@@ -67,7 +67,21 @@ suite('parser', function() {
       });
     });
 
-    test('multiline mixed', function() {
+    test('multiline crlf', function() {
+      var stream = 'aa\r\nbb\r\naaX\r\n';
+      var parser = seq(
+        string('aa\r\nbb\r\n'),
+        string('aa').then(string('bb'))
+      );
+      asserThrows(function() { parser.parse(stream) }, {
+        message: "expected 'bb' at character 10, got '...X\r\n'\n    parsing: '" + stream + "'",
+        index: 10,
+        expected: 'bb',
+        position: { row: 2, col: 2}
+      });
+    });
+
+    test('multiline empty', function() {
       var stream = 'aa\n\nbb\n\naaX\n';
       var parser = seq(
         string('aa\n\nbb\n\n'),
