@@ -68,17 +68,13 @@ Parsimmon.Parser = P(function(_, _super, Parser) {
     lineExp.lastIndex = 0;
 
     while (match = lineExp.exec(stream)) {
-      console.log('lastIndex: ' + lineExp.lastIndex);
-
       if (lineExp.lastIndex > index) {
         position.col = index - nextLineStart;
         return position;
       }
       position.row += 1;
       nextLineStart = lineExp.lastIndex + match[0].length + 1;
-      console.log('nextLineStart: ' + nextLineStart);
     }
-    console.log('single or end line');
     position.col = index - nextLineStart;
     return position;
   }
